@@ -1,7 +1,11 @@
 rock_library(log2video
-    SOURCES Dummy.cpp
-    HEADERS Dummy.hpp)
+    SOURCES Converter.cpp
+    HEADERS Converter.hpp
+    DEPS_PKGCONFIG opencv
+                   base-types
+                   pocolog_cpp
+                   frame_helper)
 
-rock_executable(log2video_bin Main.cpp
+rock_executable(Log2Video Main.cpp
     DEPS log2video)
 
