@@ -12,22 +12,45 @@ Converter::Converter()
 
 }
 
-void Converter::convert(const std::string &input_file, const std::string &stream, const std::string &output_file)
+void Converter::convert(const std::string &input_file,
+                        const std::string &output_file,
+                        std::string stream_name)
 {
-
     std::cout << "Reading input file: " << input_file << std::endl;
     pocolog_cpp::LogFile log_file_(input_file.c_str());
 
-    frame_stream_ = dynamic_cast<pocolog_cpp::InputDataStream*>(&log_file_.getStream(stream));
+    //if no stream name is provided get the fisrt
+    //stream of type /base/samples/frame/Frame
+    if (stream_name == "")
+    {
+        //get all streams in the log file
+        std::vector<pocolog_cpp::Stream *> streams = log_file_.getStreams();
+        for (int i=0; i<streams.size(); ++i)
+        {
+            if (streams[i]->getTypeName() == "/base/samples/frame/Frame")
+            {
+                stream_name = streams[i]->getName();
+                std::cout << "Stream automatically selected: " <<
+                             stream_name << std::endl;
+                break;
+            }
+
+            throw std::runtime_error("Log file does not contain any stream of type Frame");
+        }
+    }
+
+    pocolog_cpp::InputDataStream* frame_stream = 
+        dynamic_cast<pocolog_cpp::InputDataStream*>(&log_file_.getStream(stream_name));
+
     // get total number of samples
-    size_t samples = frame_stream_->getSize();
+    size_t samples = frame_stream->getSize();
 
     // get frames resolution
     int width, height;
-    getResolution(frame_stream_, width, height);
+    getResolution(frame_stream, width, height);
 
     //Compute FPS
-    double fps = computeFPS(frame_stream_, samples);
+    double fps = computeFPS(frame_stream, samples);
 
     cv::VideoWriter output_video(output_file, CV_FOURCC('M','P','4','2'), fps,
             cv::Size(width, height));
@@ -45,11 +68,13 @@ void Converter::convert(const std::string &input_file, const std::string &stream
         try
         {
             base::samples::frame::Frame input_frame;
-            frame_stream_->getSample<base::samples::frame::Frame>(input_frame, index);
+            frame_stream->getSample<base::samples::frame::Frame>(input_frame, index);
 
             //convert to RBG
             base::samples::frame::Frame input_frame_rgb;
-            input_frame_rgb.init(input_frame.size.width, input_frame.size.height, 8, base::samples::frame::MODE_BGR);
+            input_frame_rgb.init(input_frame.size.width,   
+                                 input_frame.size.height, 
+                                 8, base::samples::frame::MODE_BGR);
             frame_helper::FrameHelper helper;
             helper.convert( input_frame, input_frame_rgb, 0, 0, frame_helper::INTER_LINEAR, false);
 
@@ -67,25 +92,27 @@ void Converter::convert(const std::string &input_file, const std::string &stream
     std::cout << "Convertion is done." << std::endl;
 }
 
-double Converter::computeFPS(const pocolog_cpp::InputDataStream* frame_stream, const size_t number_of_samples) const
+double Converter::computeFPS(pocolog_cpp::InputDataStream* frame_stream,
+                             const size_t number_of_samples)
 {
     base::samples::frame::Frame temp_frame;
 
     // Get time of first and last frame
-    frame_stream_->getSample<base::samples::frame::Frame>(temp_frame, 0);
+    frame_stream->getSample<base::samples::frame::Frame>(temp_frame, 0);
     base::Time start = temp_frame.time;
-    frame_stream_->getSample<base::samples::frame::Frame>(temp_frame, number_of_samples-1);
+    frame_stream->getSample<base::samples::frame::Frame>(temp_frame, number_of_samples-1);
     base::Time final = temp_frame.time;
 
     //Compute FPS
     return (number_of_samples/(final - start).toSeconds());
 }
 
-void Converter::getResolution(const pocolog_cpp::InputDataStream* frame_stream, int &width, int &height) const
+void Converter::getResolution(pocolog_cpp::InputDataStream* frame_stream,
+                              int &width, int &height)
 {
     // Get time in seconds and image width and heigth
     base::samples::frame::Frame temp_frame;
-    frame_stream_->getSample<base::samples::frame::Frame>(temp_frame, 0);
+    frame_stream->getSample<base::samples::frame::Frame>(temp_frame, 0);
     width = temp_frame.getWidth();
     height = temp_frame.getHeight();
 }
