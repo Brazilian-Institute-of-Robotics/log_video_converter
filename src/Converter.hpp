@@ -11,15 +11,18 @@ namespace log2video
 {
     class Converter
     {
-        public: 
+        public:
             Converter();
 
-            void convert(const std::string &input_file, const std::string &stream, const std::string &output_file);
+            void convert(const std::string &input_file, 
+                         const std::string &output_file, 
+                         std::string stream_name = "");
 
         private:
-            double computeFPS(const pocolog_cpp::InputDataStream* frame_stream, const size_t number_of_samples) const;
-            void getResolution(const pocolog_cpp::InputDataStream* frame_stream, int &width, int &height) const;
-            pocolog_cpp::InputDataStream* frame_stream_;
+            double computeFPS(pocolog_cpp::InputDataStream* frame_stream, 
+                              const size_t number_of_samples);
+            void getResolution(pocolog_cpp::InputDataStream* frame_stream, 
+                               int &width, int &height);
 
     };
 
